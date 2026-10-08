@@ -4,24 +4,44 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
-
+ 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
-model Usuario {
-id Int @id @default(autoincrement())
-nome String
-email String @unique
-senha String
-produtos Produto[]
+ 
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  tasks     Task[]
 }
-model Produto {
-id Int @id @default(autoincrement())
-nome String
-preco Float
-usuario Usuario @relation(fields: [usuarioId], references: [id])
-usuarioId Int
+ 
+model Task {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
+  status      TaskStatus   @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  userId      Int
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+ 
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+ 
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
 }
