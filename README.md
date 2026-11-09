@@ -1,10 +1,10 @@
 # Rotine
 
-Projeto Node.js com Prisma ORM 7 para estruturar o acesso a um banco MySQL/MariaDB. O schema atual descreve usuários e produtos associados a cada usuário.
-
+Projeto Node.js com Prisma ORM 7 e Express. A API usa MySQL/MariaDB para armazenar usuários e tarefas.
+O Rotine é uma API REST para ajudar usuários a organizar suas tarefas. Oferece cadastro e autenticação de usuários, além de recursos para criar, consultar e atualizar tarefas com status, prioridade e prazo. Desenvolvida com Node.js e Express, utiliza Prisma ORM 7 e MySQL/MariaDB para persistir os dados.
 ## Estado atual
 
-O repositório contém o schema Prisma, uma migração inicial e a configuração do adapter MariaDB. Ainda não há `app.js`, embora os scripts `start` e `dev` em `package.json` apontem para esse arquivo. Portanto, esses scripts não iniciam uma aplicação neste momento. Também não há endpoints, interface, testes automatizados ou script de seed configurados.
+A aplicação Express é iniciada por `server.js`. Ela disponibiliza rotas de autenticação em `/auth` e de tarefas em `/tasks`.
 
 ## Requisitos
 
@@ -31,6 +31,15 @@ DATABASE_NAME="NOME_DO_BANCO"
 ```
 
 Crie o banco de dados no servidor antes de aplicar a migração. Se a senha contiver caracteres especiais, eles devem estar codificados corretamente na `DATABASE_URL`.
+
+Gere o Prisma Client antes de iniciar a API:
+
+```bash
+npx prisma generate --config prisma7.config.ts
+npm run dev
+```
+
+O cliente gerado não é versionado. Se `ERR_MODULE_NOT_FOUND` mencionar `src/generated/client.ts`, gere o cliente com o comando acima. Se mencionar um pacote como `express`, instale as dependências com `npm install`.
 
 ## Prisma
 
@@ -60,43 +69,49 @@ Em um ambiente de produção, aplique as migrações já versionadas com:
 npx prisma migrate deploy --config prisma7.config.ts
 ```
 
-Após alterações no schema, gere novamente o Prisma Client. A saída configurada pelo generator é `generated/prisma/`, diretório ignorado pelo Git.
+Após alterações no schema, gere novamente o Prisma Client. A saída configurada pelo generator é `src/generated/`, diretório ignorado pelo Git.
 
 ## Modelo de dados
 
-### `Usuario`
+### `User`
 
 - `id`: identificador inteiro autoincremental.
-- `nome`: nome do usuário.
+- `name`: nome do usuário.
 - `email`: e-mail único.
-- `senha`: senha armazenada como texto no modelo atual.
-- `produtos`: relação para os produtos pertencentes ao usuário.
+- `password`: senha do usuário.
+- `tasks`: relação com as tarefas do usuário.
 
-### `Produto`
+### `Task`
 
 - `id`: identificador inteiro autoincremental.
-- `nome`: nome do produto.
-- `preco`: preço numérico (`Float` no schema atual).
-- `usuarioId`: chave estrangeira para `Usuario`.
-- `usuario`: relação com o usuário proprietário.
+- `title`, `description`: título e descrição opcional.
+- `status`, `priority`: estado e prioridade da tarefa.
+- `dueDate`: prazo opcional.
+- `userId`: chave estrangeira para `User`.
 
-A migração inicial cria uma relação obrigatória de `Produto` para `Usuario`. A exclusão de um usuário que ainda tenha produtos é restringida pelo banco.
+Cada tarefa pertence a um usuário e é removida quando esse usuário é excluído.
 
 ## Estrutura principal
 
 ```text
 .
 ├── package.json             # Dependências e scripts npm
+├── server.js                # Inicialização da API Express
 ├── prisma7.config.ts        # Configuração do Prisma CLI e DATABASE_URL
 └── prisma/
     ├── schema.prisma        # Modelos e geração do Prisma Client
-    ├── prisma.js            # Inicialização do Prisma Client com adapter MariaDB
     └── migrations/          # Histórico de migrações SQL
+└── src/
+    ├── prisma.js            # Inicialização do Prisma Client com adapter MariaDB
+    ├── routes/              # Rotas de autenticação e tarefas
+    ├── controllers/
+    ├── services/
+    └── middlewares/
 ```
 
 ## Observações de implementação
 
-- Os scripts `npm start` e `npm run dev` só funcionarão depois que `app.js` for criado.
-- O schema gera o client em `generated/prisma`, enquanto `prisma/prisma.js` importa `PrismaClient` de `@prisma/client`. Antes de usar esse helper, alinhe o import com o diretório gerado ou ajuste a configuração do generator.
-- O campo `senha` está definido como texto simples no schema. Uma aplicação que implemente autenticação deve armazenar hashes seguros, nunca senhas em texto puro.
+- Os scripts `npm start` e `npm run dev` iniciam `server.js`.
+- O schema gera o client em `src/generated`, importado por `src/prisma.js`.
+- O serviço de usuários usa `bcryptjs` para processar senhas.
 - Não há comandos de teste ou seed definidos em `package.json` neste momento.
